@@ -196,7 +196,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to render CloudWatch Agent manifest: %v", err)
 	}
 	// all NVIDIA tests require the device plugin and MPI operator
-	deploymentManifest := [][]byte{
+	deploymentManifests := [][]byte{
 		manifests.MpiOperatorManifest,
 		manifests.DCGMExporterManifest,
 		renderedCloudWatchAgentManifest,
@@ -204,7 +204,7 @@ func TestMain(m *testing.M) {
 	setUpFunctions := []env.Func{
 		func(ctx context.Context, config *envconf.Config) (context.Context, error) {
 			log.Println("Applying MPI operator, DCGM Exporter and CloudWatch Agent manifests.")
-			err := fwext.ApplyManifests(config.Client().RESTConfig(), deploymentManifest...)
+			err := fwext.ApplyManifests(config.Client().RESTConfig(), deploymentManifests...)
 			if err != nil {
 				return ctx, err
 			}
@@ -217,12 +217,12 @@ func TestMain(m *testing.M) {
 	}
 
 	if *installDevicePlugin {
-		deploymentManifest = append(deploymentManifest, manifests.NvidiaDevicePluginManifest)
+		deploymentManifests = append(deploymentManifests, manifests.NvidiaDevicePluginManifest)
 		setUpFunctions = append(setUpFunctions, deployDaemonSet("nvidia-device-plugin-daemonset", "kube-system"))
 	}
 
 	if *efaEnabled {
-		deploymentManifest = append(deploymentManifest, manifests.EfaDevicePluginManifest)
+		deploymentManifests = append(deploymentManifests, manifests.EfaDevicePluginManifest)
 		setUpFunctions = append(setUpFunctions, deployDaemonSet("aws-efa-k8s-device-plugin-daemonset", "kube-system"))
 	}
 	log.Printf("Using template variables: REGION=%s, VERSION=%s, VARIANT=%s, INSTANCE_TYPE=%s, TEAM_IDENTIFIER=%s, TEST_NAME=nvidia",
@@ -240,8 +240,8 @@ func TestMain(m *testing.M) {
 				}
 
 			}
-			slices.Reverse(deploymentManifest)
-			err := fwext.DeleteManifests(config.Client().RESTConfig(), deploymentManifest...)
+			slices.Reverse(deploymentManifests)
+			err := fwext.DeleteManifests(config.Client().RESTConfig(), deploymentManifests...)
 			if err != nil {
 				return ctx, err
 			}
